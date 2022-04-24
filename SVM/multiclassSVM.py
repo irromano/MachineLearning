@@ -61,10 +61,6 @@ def svm_dual(x_batch, y_batch, C):
 
     n_samples = x_batch.shape[0]
     K = np.matmul(x_batch, np.transpose(x_batch))
-    # K = np.zeros((n_samples, n_samples))
-    # for i in range(n_samples):
-    #     for j in range(n_samples):
-    #         K[i, j] = np.dot(x_batch[i], x_batch[j])
 
     P = cvxopt.matrix(np.outer(y_batch, y_batch) * K)
     q = cvxopt.matrix(np.ones(n_samples) * -1)
