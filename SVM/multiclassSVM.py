@@ -136,54 +136,35 @@ betas = [np.reshape(np.zeros(10 * train_data_x.shape[1]), (10,  train_data_x.sha
          for _ in range(len(C))]
 betas = np.array(betas)
 
-# for c in range(len(C)):
-#     ratios = np.zeros(10)
+for c in range(len(C)):
+    ratios = np.zeros(10)
 
-#     # Hyper-parameters
-#     training_epochs = 100
-#     learning_rate = 0.0005          # The optimization initial learning rate
-#     cost = 0
+    for j in range(10):
+        current_label = train_data_y[:, j]
+        alpha = svm_dual(train_data_x, current_label, C[c])
+        # Guarantee the value of alpha being greater than or equal to zero based on the KKT conditons (3.2 Slides, Page 4)
+        sv = alpha > 1e-5
+        alpha_nz = alpha[sv]
+        data_nz = train_data_x[sv]
+        label_nz = current_label[sv]
 
-#     # train_svm_scores = [np.zeros(10) for _ in range(train_data_y.shape[0])]
-#     # train_svm_scores = np.array(train_svm_scores)
-#     # test_svm_scores = [np.zeros(10) for _ in range(test_data_y.shape[0])]
-#     # test_svm_scores = np.array(test_svm_scores)
-#     for j in range(10):
-#         current_label = train_data_y[:, j]
-#         alpha = svm_dual(train_data_x, current_label, C[c])
-#         # Guarantee the value of alpha being greater than or equal to zero based on the KKT conditons (3.2 Slides, Page 4)
-#         sv = alpha > 1e-5
-#         alpha_nz = alpha[sv]
-#         data_nz = train_data_x[sv]
-#         label_nz = current_label[sv]
+        # Derive the weights of the SVM classifer based on SVM Wolfe dual (3.2 Slides, Page 4)
+        d = data_nz.shape[1]
+        n = data_nz.shape[0]
 
-#         # Derive the weights of the SVM classifer based on SVM Wolfe dual (3.2 Slides, Page 4)
-#         d = data_nz.shape[1]
-#         n = data_nz.shape[0]
+        #print("%d support vectors out of %d points" % (len(alpha_nz), n))
+        for i in range(n):
+            betas[c][j] += alpha_nz[i] * label_nz[i] * data_nz[i]
 
-#         #print("%d support vectors out of %d points" % (len(alpha_nz), n))
-#         for i in range(n):
-#             betas[c][j] += alpha_nz[i] * label_nz[i] * data_nz[i]
-# print(beta)
-# Print the SVM classifcation accurarcy and results.
-# train_svm_results = classifcation_ratio(beta, train_data_x)
-# test_svm_results = classifcation_ratio(beta, test_data_x)
-# print(svm_results)
-# train_svm_scores[:, j] = train_svm_results
-# test_svm_scores[:, j] = test_svm_results
-
-# train_ratio = multi_classifcation_ratio(train_svm_scores, train_data_y)
-# print(f'C {C[c]}, the classification train accuracy is {train_ratio*100:.2f}')
-# test_ratio = multi_classifcation_ratio(test_svm_scores, test_data_y)
-# print(f'C {C[c]}, the classification test accuracy is {test_ratio*100:.2f}')
-# #print('the svm classifcation accuracy is %.2f%%' % (svm_accuracy*100))
-# train_accuracy[c] = train_ratio
+#############################################################################
+# These Lines are used to either save or load beta values to files in leu of calculating, speeds up debugging time
 # np.savetxt("SVM/betas_0.csv", betas[0])  # Saving betas to file for debugging
 # np.savetxt("SVM/betas_1.csv", betas[1])  # Saving betas to file for debugging
 # np.savetxt("SVM/betas_2.csv", betas[2])  # Saving betas to file for debugging
-betas[0] = np.loadtxt("SVM/betas_0.csv")
-betas[1] = np.loadtxt("SVM/betas_1.csv")
-betas[2] = np.loadtxt("SVM/betas_2.csv")
+# betas[0] = np.loadtxt("SVM/betas_0.csv")
+# betas[1] = np.loadtxt("SVM/betas_1.csv")
+# betas[2] = np.loadtxt("SVM/betas_2.csv")
+
 #############################################################################
 # Training SVM models to get the weigts
 for c in range(len(C)):
@@ -193,6 +174,7 @@ for c in range(len(C)):
         train_svm_scores[:, j] = classifcation_ratio(betas[c][j], train_data_x)
     train_ratio = multi_classifcation_ratio(train_svm_scores, train_data_y)
     print(f'C {C[c]}, the classification train accuracy is {train_ratio*100:.2f}')
+    train_accuracy[c] = train_ratio
 
 #############################################################################
 # Testing SVM models
@@ -203,19 +185,31 @@ for c in range(len(C)):
         test_svm_scores[:, j] = classifcation_ratio(betas[c][j], test_data_x)
     test_ratio = multi_classifcation_ratio(test_svm_scores, test_data_y)
     print(f'C {C[c]}, the classification train accuracy is {test_ratio*100:.2f}')
+    test_accuracy[c] = test_ratio
 
 #############################################################################
 # Visualizing five images of the MNIST dataset
-fig, _axs = plt.subplots(nrows=1, ncols=5)
-axs = _axs.flatten()
+# fig, _axs = plt.subplots(nrows=1, ncols=5)
+# axs = _axs.flatten()
 
-for i in range(5):
-    axs[i].grid(False)
-    axs[i].set_xticks([])
-    axs[i].set_yticks([])
-    image = data_x[i*10, :784]
-    image = np.reshape(image, (28, 28))
-    aa = axs[i].imshow(image, cmap=plt.get_cmap("gray"))
+# for i in range(5):
+#     axs[i].grid(False)
+#     axs[i].set_xticks([])
+#     axs[i].set_yticks([])
+#     image = data_x[i*10, :784]
+#     image = np.reshape(image, (28, 28))
+#     aa = axs[i].imshow(image, cmap=plt.get_cmap("gray"))
 
-fig.tight_layout()
+# fig.tight_layout()
+
+#############################################################################
+# Ploting Accuraccy with values C
+plt.plot(C, train_accuracy, color="blue")
+plt.plot(C, test_accuracy, color="red")
+plt.xlabel("C value")
+plt.ylabel("Accuracy")
+plt.title("Classification Accuracy with varying C Value")
+plt.xscale("log")
+plt.legend(["Training Acc", "Test Acc"])
+
 plt.show()
