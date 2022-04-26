@@ -82,36 +82,32 @@ class Trellis:
                     a[i] = (-1)*abs(b[i]) if a[i] < 0 else abs(b[i])
             return np.linalg.norm(a - b)
 
-    def LLR(self, r, c, p):
-        return np.log((1-p) / p) if r == c else np.log((p / (1-p)))
+    def LLR(self, r, p):
+        return np.log((1-p) / p) if r == 1 else np.log((p / (1-p)))
 
     def updateA(self, A, r, t, p):
         for i in range(A.shape[1]):
-            A[t, i] = max(A[t-1, self.states[i].backbranch0] + self.states[i].branch0_output[0] * self.LLR(r[0], 1, p) + self.states[i].branch0_output[1] * self.LLR(r[1], 1, p),
-                          A[t-1, self.states[i].backbranch1] + self.states[i].branch1_output[0] * self.LLR(r[0], 1, p) + self.states[i].branch1_output[1] * self.LLR(r[1], 1, p))
-            # A[t, i] += np.log(1 + np.exp((-1)*abs(A[t-1, self.states[i].backbranch0] + (-1)*self.distance(r, self.states[self.states[i].backbranch0].branch0_output,
-            # self.encoding, True) - A[t-1, self.states[i].backbranch1] + (-1)*self.distance(r, self.states[self.states[i].backbranch1].branch1_output, self.encoding, True))))
+            A[t, i] = max(A[t-1, self.states[i].backbranch0] + self.states[self.states[i].backbranch0].branch0_output[0] * self.LLR(r[0], p) + self.states[self.states[i].backbranch0].branch0_output[1] * self.LLR(r[1], p),
+                          A[t-1, self.states[i].backbranch1] + self.states[self.states[i].backbranch1].branch1_output[0] * self.LLR(r[0], p) + self.states[self.states[i].backbranch1].branch1_output[1] * self.LLR(r[1], p))
         return A[t]
 
     def updateB(self, B, r, t, p):
         for i in range(B.shape[1]):
-            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + self.states[i].branch0_output[0] * self.LLR(r[0], 1, p) + self.states[i].branch0_output[1] * self.LLR(r[1], 1, p),
-                          B[t+1, self.states[i].branch1_digit] + self.states[i].branch1_output[0] * self.LLR(r[0], 1, p) + self.states[i].branch1_output[1] * self.LLR(r[1], 1, p))
-            # B[t, i] += np.log(1 + np.exp((-1)*abs(B[t+1, self.states[i].branch0_digit] + (-1)*self.distance(r, self.states[i].branch0_output, self.encoding,
-            # True) - B[t+1, self.states[i].branch1_digit] + (-1)*self.distance(r, self.states[i].branch1_output, self.encoding, True))))
+            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + self.states[i].branch0_output[0] * self.LLR(r[0], p) + self.states[i].branch0_output[1] * self.LLR(r[1], p),
+                          B[t+1, self.states[i].branch1_digit] + self.states[i].branch1_output[0] * self.LLR(r[0], p) + self.states[i].branch1_output[1] * self.LLR(r[1], p))
         return B[t]
 
-    def updateR(self, A, B, r, t, p):
+    def updateR(self, A, B, r, p):
         r0 = np.zeros(len(self.states))
         r1 = np.zeros(len(self.states))
 
         for i in range(len(self.states)):
             r0[i] = A[self.states[i].backbranch0] + self.states[self.states[i].backbranch0].branch0_output[0] * \
-                self.LLR(r[0], 1, p) + self.states[self.states[i].backbranch0].branch0_output[1] * \
-                self.LLR(r[1], 1, p) + B[i]
+                self.LLR(r[0], p) + self.states[self.states[i].backbranch0].branch0_output[1] * \
+                self.LLR(r[1], p) + B[i]
             r1[i] = A[self.states[i].backbranch1] + self.states[self.states[i].backbranch1].branch1_output[0] * \
-                self.LLR(r[0], 1, p) + self.states[self.states[i].backbranch1].branch1_output[1] * \
-                self.LLR(r[1], 1, p) + B[i]
+                self.LLR(r[0], p) + self.states[self.states[i].backbranch1].branch1_output[1] * \
+                self.LLR(r[1], p) + B[i]
         return max(r1) - max(r0)
 
     def updateBranchCost(self, cost: list[int], input: list[int], time: int, hard=False):

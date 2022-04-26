@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
-import Conv_Viterbi as Conv
+import Conv_Trellis as Conv
 
 # Constants
 BLOCK_LENGTH = 16000

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
-import Conv_Viterbi as Conv
+import Conv_Trellis as Conv
 
 # Constants
 BLOCK_LENGTH = 16000
@@ -69,22 +69,21 @@ for iter in range(ITERATIONS):
         R = np.zeros(BLOCK_LENGTH + MEMORY)
         for t in range(1, BLOCK_LENGTH + MEMORY + 1):
             A[t] = trel.updateA(A, coded_observation[t-1], t, p)
-            # print(A[t])
         for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
             B[t] = trel.updateB(B, coded_observation[t], t, p)
-            # print(B[t])
         for t in range(1, BLOCK_LENGTH + MEMORY):
-            R[t] = trel.updateR(A[t], B[t+1], coded_observation[t], t, p)
+            R[t] = trel.updateR(A[t], B[t+1], coded_observation[t], p)
 
         # BER
         R[R < 0] = 0
         R[R > 0] = 1
-        misses = 0
-        for i in range(BLOCK_LENGTH + MEMORY):
-            if R[i] != uncoded[i]:
-                misses += 1
 
-        BER[trial] = misses / (BLOCK_LENGTH + MEMORY)
+        # misses = 0
+        # for i in range(BLOCK_LENGTH + MEMORY):
+        #     if R[i] != uncoded[i]:
+        #         misses += 1
+
+        BER[trial] = 1 - np.mean(R == uncoded)  # misses / (BLOCK_LENGTH + MEMORY)
 
     BER_data[iter] = np.mean(BER)
     print(f"Iter {iter} BER={np.mean(BER):.6f} at p={Probability[iter]:.6f}")
