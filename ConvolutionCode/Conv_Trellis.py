@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.stats as stats
 import enum
 
 
@@ -82,32 +83,47 @@ class Trellis:
                     a[i] = (-1)*abs(b[i]) if a[i] < 0 else abs(b[i])
             return np.linalg.norm(a - b)
 
-    def LLR(self, r, p):
-        return np.log((1-p) / p) if r == 1 else np.log((p / (1-p)))
+    def LLR(self, r, p, hard, eb):
+        if self.encoding == EncodingType.BSC:
+            return np.log((1-p) / p) if r == 1 else np.log((p / (1-p)))
+        elif hard:
+            return np.log((1-p) / p) if r > 0 else np.log((p / (1-p)))
+        else:
+            return ((r + eb) ** 2 / (r - eb) ** 2) + np.log((1-p) / p) if r > 0 else ((r - eb) ** 2 / (r + eb) ** 2) - np.log((p / (1-p)))
 
-    def updateA(self, A, r, t, p):
+    def updateA(self, A, r, t, p, hard=True, eb=1):
         for i in range(A.shape[1]):
-            A[t, i] = max(A[t-1, self.states[i].backbranch0] + self.states[self.states[i].backbranch0].branch0_output[0] * self.LLR(r[0], p) + self.states[self.states[i].backbranch0].branch0_output[1] * self.LLR(r[1], p),
-                          A[t-1, self.states[i].backbranch1] + self.states[self.states[i].backbranch1].branch1_output[0] * self.LLR(r[0], p) + self.states[self.states[i].backbranch1].branch1_output[1] * self.LLR(r[1], p))
+            c0_0 = int(self.states[self.states[i].backbranch0].branch0_output[0] > 0)
+            c1_0 = int(self.states[self.states[i].backbranch0].branch0_output[1] > 0)
+            c0_1 = int(self.states[self.states[i].backbranch1].branch1_output[0] > 0)
+            c1_1 = int(self.states[self.states[i].backbranch1].branch1_output[1] > 0)
+            A[t, i] = max(A[t-1, self.states[i].backbranch0] + c0_0 * self.LLR(r[0], p, hard, eb) + c1_0 * self.LLR(r[1], p, hard, eb),
+                          A[t-1, self.states[i].backbranch1] + c0_1 * self.LLR(r[0], p, hard, eb) + c1_1 * self.LLR(r[1], p, hard, eb))
         return A[t]
 
-    def updateB(self, B, r, t, p):
+    def updateB(self, B, r, t, p, hard=True, eb=1):
         for i in range(B.shape[1]):
-            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + self.states[i].branch0_output[0] * self.LLR(r[0], p) + self.states[i].branch0_output[1] * self.LLR(r[1], p),
-                          B[t+1, self.states[i].branch1_digit] + self.states[i].branch1_output[0] * self.LLR(r[0], p) + self.states[i].branch1_output[1] * self.LLR(r[1], p))
+            c0_0 = int(self.states[i].branch0_output[0] > 0)
+            c1_0 = int(self.states[i].branch0_output[1] > 0)
+            c0_1 = int(self.states[i].branch1_output[0] > 0)
+            c1_1 = int(self.states[i].branch1_output[1] > 0)
+            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + c0_0 * self.LLR(r[0], p, hard, eb) + c1_0 * self.LLR(r[1], p, hard, eb),
+                          B[t+1, self.states[i].branch1_digit] + c0_1 * self.LLR(r[0], p, hard, eb) + c1_1 * self.LLR(r[1], p, hard, eb))
         return B[t]
 
-    def updateR(self, A, B, r, p):
+    def updateR(self, A, B, r, p, hard=True, eb=1):
         r0 = np.zeros(len(self.states))
         r1 = np.zeros(len(self.states))
 
         for i in range(len(self.states)):
-            r0[i] = A[self.states[i].backbranch0] + self.states[self.states[i].backbranch0].branch0_output[0] * \
-                self.LLR(r[0], p) + self.states[self.states[i].backbranch0].branch0_output[1] * \
-                self.LLR(r[1], p) + B[i]
-            r1[i] = A[self.states[i].backbranch1] + self.states[self.states[i].backbranch1].branch1_output[0] * \
-                self.LLR(r[0], p) + self.states[self.states[i].backbranch1].branch1_output[1] * \
-                self.LLR(r[1], p) + B[i]
+            c0_0 = int(self.states[self.states[i].backbranch0].branch0_output[0] > 0)
+            c1_0 = int(self.states[self.states[i].backbranch0].branch0_output[1] > 0)
+            c0_1 = int(self.states[self.states[i].backbranch1].branch1_output[0] > 0)
+            c1_1 = int(self.states[self.states[i].backbranch1].branch1_output[1] > 0)
+            r0[i] = A[self.states[i].backbranch0] + c0_0 * \
+                self.LLR(r[0], p, hard, eb) + c1_0 * self.LLR(r[1], p, hard, eb) + B[i]
+            r1[i] = A[self.states[i].backbranch1] + c0_1 * \
+                self.LLR(r[0], p, hard, eb) + c1_1 * self.LLR(r[1], p, hard, eb) + B[i]
         return max(r1) - max(r0)
 
     def updateBranchCost(self, cost: list[int], input: list[int], time: int, hard=False):
@@ -171,6 +187,11 @@ def digit_to_Value(dig: int) -> list[int]:
 
 def value_to_digit(value: list) -> int:
     return value[0] + value[1] * 2 + value[2] * 4
+
+
+def AWGN_p():
+
+    return 0
 
 
 # Memory State Elements

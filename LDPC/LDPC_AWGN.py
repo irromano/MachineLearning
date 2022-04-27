@@ -86,32 +86,32 @@ def compute_pv(pu, li, de):
 
 
 # Load Tanner Graph from files
-checkNode_to_errorNode = np.loadtxt("LDPC_Data/checkNode_to_errorNode.csv", dtype=int)
-errorNode_to_checkNode = np.loadtxt("LDPC_Data/errorNode_to_checkNode.csv", dtype=int)
+# checkNode_to_errorNode = np.loadtxt("LDPC_Data/checkNode_to_errorNode.csv", dtype=int)
+# errorNode_to_checkNode = np.loadtxt("LDPC_Data/errorNode_to_checkNode.csv", dtype=int)
 
 
 # Creates new Parity Matrix. Has a chance of crashing
-# while True:
-#     try:
-#         checkNode_to_errorNode = []
-#         errorNode_to_checkNode = [[] for _ in range(n)]
-#         errorNodeList = np.arange(n)
-#         for checkNode in range(n-k):
-#             arr = np.random.choice(errorNodeList, dc, replace=False)
-#             checkNode_to_errorNode.append(arr)
-#             for errorNode in arr:
-#                 errorNode_to_checkNode[errorNode].append(checkNode)
-#                 if len(errorNode_to_checkNode[errorNode]) >= de:
-#                     errorNodeList = np.delete(
-#                         errorNodeList, np.where(errorNodeList == errorNode))
-#         np.savetxt("checkNode_to_errorNode.csv", checkNode_to_errorNode)
-#         np.savetxt("errorNode_to_checkNode.csv", errorNode_to_checkNode)
+while True:
+    try:
+        checkNode_to_errorNode = []
+        errorNode_to_checkNode = [[] for _ in range(n)]
+        errorNodeList = np.arange(n)
+        for checkNode in range(n-k):
+            arr = np.random.choice(errorNodeList, dc, replace=False)
+            checkNode_to_errorNode.append(arr)
+            for errorNode in arr:
+                errorNode_to_checkNode[errorNode].append(checkNode)
+                if len(errorNode_to_checkNode[errorNode]) >= de:
+                    errorNodeList = np.delete(
+                        errorNodeList, np.where(errorNodeList == errorNode))
+        # np.savetxt("checkNode_to_errorNode.csv", checkNode_to_errorNode)
+        # np.savetxt("errorNode_to_checkNode.csv", errorNode_to_checkNode)
 
-#         checkNode_to_errorNode = np.array(checkNode_to_errorNode)
-#         errorNode_to_checkNode = np.array(errorNode_to_checkNode)
-#         break
-#     except ValueError:
-#         print("Creating new Tanner Graph failed. Trying again ...")
+        checkNode_to_errorNode = np.array(checkNode_to_errorNode)
+        errorNode_to_checkNode = np.array(errorNode_to_checkNode)
+        break
+    except ValueError:
+        print("Creating new Tanner Graph failed. Trying again ...")
 
 # Build Parity Matrix from tanner graph arrays
 H = np.zeros((n-k, n), dtype=int)
