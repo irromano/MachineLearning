@@ -1,4 +1,4 @@
-# ConvolutionCodes
+# Convolution Codes
 The programs written for this assignment consist of a Convolution Encoder, Viterbi Decoder, and Forward Backward decoder. The two main programs to run are Conv_BSC.py and Conv_AWGN.py. Both require the Conv_Trellis.py file in the same directory to run. 
 To run the BSC program, use the following command while in the directory to run them in Python3:
   python Conv_BSC.py
