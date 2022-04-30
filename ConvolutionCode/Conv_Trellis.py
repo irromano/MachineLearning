@@ -83,35 +83,35 @@ class Trellis:
                     a[i] = (-1)*abs(b[i]) if a[i] < 0 else abs(b[i])
             return np.linalg.norm(a - b)
 
-    def LLR(self, r, p, hard, eb):
+    def LLR(self, r, p, hard):
         if self.encoding == EncodingType.BSC:
             return np.log((1-p) / p) if r == 1 else np.log((p / (1-p)))
         elif hard:
-            return np.log((1-p) / p) if r > 0 else np.log((p / (1-p)))
+            return 2 * p if r > 0 else (-2) * p
         else:
-            return ((r + eb) ** 2 / (r - eb) ** 2) + np.log((1-p) / p) if r > 0 else ((r - eb) ** 2 / (r + eb) ** 2) - np.log((p / (1-p)))
+            return 2 * r
 
-    def updateA(self, A, r, t, p, hard=True, eb=1):
+    def updateA(self, A, r, t, p, hard=True):
         for i in range(A.shape[1]):
             c0_0 = int(self.states[self.states[i].backbranch0].branch0_output[0] > 0)
             c1_0 = int(self.states[self.states[i].backbranch0].branch0_output[1] > 0)
             c0_1 = int(self.states[self.states[i].backbranch1].branch1_output[0] > 0)
             c1_1 = int(self.states[self.states[i].backbranch1].branch1_output[1] > 0)
-            A[t, i] = max(A[t-1, self.states[i].backbranch0] + c0_0 * self.LLR(r[0], p, hard, eb) + c1_0 * self.LLR(r[1], p, hard, eb),
-                          A[t-1, self.states[i].backbranch1] + c0_1 * self.LLR(r[0], p, hard, eb) + c1_1 * self.LLR(r[1], p, hard, eb))
+            A[t, i] = max(A[t-1, self.states[i].backbranch0] + c0_0 * self.LLR(r[0], p, hard) + c1_0 * self.LLR(r[1], p, hard),
+                          A[t-1, self.states[i].backbranch1] + c0_1 * self.LLR(r[0], p, hard) + c1_1 * self.LLR(r[1], p, hard))
         return A[t]
 
-    def updateB(self, B, r, t, p, hard=True, eb=1):
+    def updateB(self, B, r, t, p, hard=True):
         for i in range(B.shape[1]):
             c0_0 = int(self.states[i].branch0_output[0] > 0)
             c1_0 = int(self.states[i].branch0_output[1] > 0)
             c0_1 = int(self.states[i].branch1_output[0] > 0)
             c1_1 = int(self.states[i].branch1_output[1] > 0)
-            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + c0_0 * self.LLR(r[0], p, hard, eb) + c1_0 * self.LLR(r[1], p, hard, eb),
-                          B[t+1, self.states[i].branch1_digit] + c0_1 * self.LLR(r[0], p, hard, eb) + c1_1 * self.LLR(r[1], p, hard, eb))
+            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + c0_0 * self.LLR(r[0], p, hard) + c1_0 * self.LLR(r[1], p, hard),
+                          B[t+1, self.states[i].branch1_digit] + c0_1 * self.LLR(r[0], p, hard) + c1_1 * self.LLR(r[1], p, hard))
         return B[t]
 
-    def updateR(self, A, B, r, p, hard=True, eb=1):
+    def updateR(self, A, B, r, p, hard=True):
         r0 = np.zeros(len(self.states))
         r1 = np.zeros(len(self.states))
 
@@ -121,9 +121,9 @@ class Trellis:
             c0_1 = int(self.states[self.states[i].backbranch1].branch1_output[0] > 0)
             c1_1 = int(self.states[self.states[i].backbranch1].branch1_output[1] > 0)
             r0[i] = A[self.states[i].backbranch0] + c0_0 * \
-                self.LLR(r[0], p, hard, eb) + c1_0 * self.LLR(r[1], p, hard, eb) + B[i]
+                self.LLR(r[0], p, hard) + c1_0 * self.LLR(r[1], p, hard) + B[i]
             r1[i] = A[self.states[i].backbranch1] + c0_1 * \
-                self.LLR(r[0], p, hard, eb) + c1_1 * self.LLR(r[1], p, hard, eb) + B[i]
+                self.LLR(r[0], p, hard) + c1_1 * self.LLR(r[1], p, hard) + B[i]
         return max(r1) - max(r0)
 
     def updateBranchCost(self, cost: list[int], input: list[int], time: int, hard=False):

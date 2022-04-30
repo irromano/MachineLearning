@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
-import random
+from numpy.random import default_rng
 
 import Conv_Trellis as Conv
 
@@ -14,54 +14,47 @@ TRIALS = 10
 
 
 # Plot Data
-Eb_data = np.linspace(2.7, 6.3, ITERATIONS)
+Eb_data = np.linspace(1.0, 2.8, ITERATIONS)
 Viterbi_BER_data_soft = np.zeros(ITERATIONS, dtype=np.double)
 Viterbi_BER_data_hard = np.zeros(ITERATIONS, dtype=np.double)
 FwBw_BER_data_soft = np.zeros(ITERATIONS, dtype=np.double)
 FwBw_BER_data_hard = np.zeros(ITERATIONS, dtype=np.double)
 
 # initialize randomizer
-random.seed()
+rng = default_rng()
 
 for iter in range(ITERATIONS):
-    # Declaring uncoded and coded matrixes
-    uncoded = np.zeros(BLOCK_LENGTH + MEMORY, dtype=int)
-    #uncoded = [1, 1, 0, 0, 1, 0, 1, 0]
-
-    coded = np.zeros((BLOCK_LENGTH + MEMORY, 2), dtype=np.double)
-    coded_guess = coded.copy()
-    uncoded_guess_soft = uncoded.copy()
-    uncoded_guess_hard = uncoded.copy()
-
-    # Randomize uncoded message
-    v = 0.5
-    for i in range(BLOCK_LENGTH):
-        if random.random() < v:
-            uncoded[i] = 1
-
-    # encoding uncoded
-    d = np.zeros(MEMORY, dtype=np.int16)     # Memory State Elements
-    D = np.zeros((BLOCK_LENGTH + MEMORY, MEMORY), dtype=np.int16)
-    for i in range(BLOCK_LENGTH):
-        D[i] = d.copy()
-        coded[i] = Conv.conv(uncoded[i], d, Conv.EncodingType.AWGN, Eb_data[iter])
-
-    # Using the last 3 bits to reset state to [ 0, 0, 0 ]
-    for i in range(BLOCK_LENGTH, BLOCK_LENGTH + MEMORY):
-        D[i] = d.copy()
-        resetbit = (d[1] + d[2]) % 2
-        uncoded[i] = resetbit
-        coded[i] = Conv.conv(resetbit, d, Conv.EncodingType.AWGN, Eb_data[iter])
-
     Viterbi_BER_soft = np.zeros(TRIALS, dtype=np.double)
     Viterbi_BER_hard = np.zeros(TRIALS, dtype=np.double)
     FwBw_BER_soft = np.zeros(TRIALS, dtype=np.double)
     FwBw_BER_hard = np.zeros(TRIALS, dtype=np.double)
 
-    coded_observation = coded.copy()
     for trial in range(TRIALS):
-        # Calculating p
-        p = 1 - stats.norm.cdf(Eb_data[iter])
+
+        # Declaring uncoded and coded matrixes
+        uncoded = rng.choice(2, BLOCK_LENGTH + MEMORY)  # np.zeros(BLOCK_LENGTH + MEMORY, dtype=int)
+        uncoded[BLOCK_LENGTH:] = 0
+
+        coded = np.zeros((BLOCK_LENGTH + MEMORY, 2), dtype=np.double)
+        coded_guess = coded.copy()
+        uncoded_guess_soft = np.zeros(BLOCK_LENGTH + MEMORY)
+        uncoded_guess_hard = uncoded_guess_soft.copy()
+
+        # encoding uncoded
+        d = np.zeros(MEMORY, dtype=np.int16)     # Memory State Elements
+        D = np.zeros((BLOCK_LENGTH + MEMORY, MEMORY), dtype=np.int16)
+        for i in range(BLOCK_LENGTH):
+            D[i] = d.copy()
+            coded[i] = Conv.conv(uncoded[i], d, Conv.EncodingType.AWGN, Eb_data[iter])
+
+        # Using the last 3 bits to reset state to [ 0, 0, 0 ]
+        for i in range(BLOCK_LENGTH, BLOCK_LENGTH + MEMORY):
+            D[i] = d.copy()
+            resetbit = (d[1] + d[2]) % 2
+            uncoded[i] = resetbit
+            coded[i] = Conv.conv(resetbit, d, Conv.EncodingType.AWGN, Eb_data[iter])
+
+        coded_observation = coded.copy()
 
         # introducing noise
         noise = np.reshape(np.random.normal(0, 1.0, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
@@ -87,36 +80,27 @@ for iter in range(ITERATIONS):
         A_soft = np.zeros((BLOCK_LENGTH + MEMORY + 1, STATE_COUNT))
         A_soft[0, 0] = 0
         A_soft[0, 1:] = float('-inf')
+        A_hard = A_soft.copy()
         B_soft = np.zeros((BLOCK_LENGTH + MEMORY + 1, STATE_COUNT))
         B_soft[BLOCK_LENGTH + MEMORY, 0] = 0
         B_soft[BLOCK_LENGTH + MEMORY, 1:] = float('-inf')
+        B_hard = B_soft.copy()
         R_soft = np.zeros(BLOCK_LENGTH + MEMORY)
-
-        A_hard = np.zeros((BLOCK_LENGTH + MEMORY + 1, STATE_COUNT))
-        A_hard[0, 0] = 0
-        A_hard[0, 1:] = float('-inf')
-        B_hard = np.zeros((BLOCK_LENGTH + MEMORY + 1, STATE_COUNT))
-        B_hard[BLOCK_LENGTH + MEMORY, 0] = 0
-        B_hard[BLOCK_LENGTH + MEMORY, 1:] = float('-inf')
-        R_hard = np.zeros(BLOCK_LENGTH + MEMORY)
+        R_hard = R_soft.copy()
 
         for t in range(1, BLOCK_LENGTH + MEMORY + 1):
-            A_soft[t] = trel_soft.updateA(A_soft, coded_observation[t-1], t, p, False, Eb_data[iter])
+            A_soft[t] = trel_soft.updateA(A_soft, coded_observation[t-1], t, Eb_data[iter], False)
+            A_hard[t] = trel_hard.updateA(A_hard, coded_observation[t-1], t, Eb_data[iter])
         for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
-            B_soft[t] = trel_soft.updateB(B_soft, coded_observation[t], t, p, False, Eb_data[iter])
-        for t in range(1, BLOCK_LENGTH + MEMORY):
-            R_soft[t] = trel_soft.updateR(A_soft[t], B_soft[t+1], coded_observation[t], p, False, Eb_data[iter])
-
-        for t in range(1, BLOCK_LENGTH + MEMORY + 1):
-            A_hard[t] = trel_hard.updateA(A_hard, coded_observation[t-1], t, p)
-        for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
-            B_hard[t] = trel_hard.updateB(B_hard, coded_observation[t], t, p)
-        for t in range(1, BLOCK_LENGTH + MEMORY):
-            R_hard[t] = trel_hard.updateR(A_hard[t], B_hard[t+1], coded_observation[t], p)
+            B_soft[t] = trel_soft.updateB(B_soft, coded_observation[t], t, Eb_data[iter], False)
+            B_hard[t] = trel_hard.updateB(B_hard, coded_observation[t], t, Eb_data[iter])
+        for t in range(BLOCK_LENGTH + MEMORY):
+            R_soft[t] = trel_soft.updateR(A_soft[t], B_soft[t+1], coded_observation[t], Eb_data[iter], False)
+            R_hard[t] = trel_hard.updateR(A_hard[t], B_hard[t+1], coded_observation[t], Eb_data[iter])
 
         # BER
-        R_soft[R_hard < 0] = 0
-        R_soft[R_hard > 0] = 1
+        R_soft[R_soft < 0] = 0
+        R_soft[R_soft > 0] = 1
         R_hard[R_hard < 0] = 0
         R_hard[R_hard > 0] = 1
 
@@ -148,7 +132,7 @@ plt.xlabel("Eb/No")
 plt.ylabel("BER")
 plt.yscale("log")
 plt.plot(Eb_data, Viterbi_BER_data_soft, color="red", label="Viterbi Soft")
-plt.plot(Eb_data, FwBw_BER_data_soft, color="yellow", label="FwBw soft")
+plt.plot(Eb_data, FwBw_BER_data_soft, color="green", label="FwBw Soft")
 plt.legend(["Viterbi Soft", "FwBw soft"])
 plt.ylim(10 ** (-6), 10 ** (-1))
 plt.show()
@@ -159,8 +143,8 @@ plt.ylabel("BER")
 plt.yscale("log")
 plt.plot(Eb_data, Viterbi_BER_data_soft, color="red", label="Viterbi Soft")
 plt.plot(Eb_data, Viterbi_BER_data_hard, color="blue", label="Viterbi Hard")
-plt.plot(Eb_data, FwBw_BER_data_soft, color="yellow", label="FwBw soft")
-plt.plot(Eb_data, FwBw_BER_data_hard, color="green", label="FwBw hard")
-plt.legend(["Viterbi Soft", "Viterbi Hard", "FwBw soft", "FwBw Hard"])
+plt.plot(Eb_data, FwBw_BER_data_soft, color="green", label="FwBw Soft")
+plt.plot(Eb_data, FwBw_BER_data_hard, color="purple", label="FwBw hard")
+plt.legend(["Viterbi Soft", "Viterbi Hard", "FwBw Soft", "FwBw Hard"])
 plt.ylim(10 ** (-6), 10 ** (-1))
 plt.show()
