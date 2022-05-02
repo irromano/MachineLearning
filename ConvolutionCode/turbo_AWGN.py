@@ -184,6 +184,10 @@ for iter in range(ITERATIONS):
     BER_data_soft[iter] = np.mean(BER_soft)
     BER_data_hard[iter] = np.mean(BER_hard)
 
+print(f"The Average Soft Error was {np.mean(BER_data_soft)}")
+print(f"The Average Hard Error was {np.mean(BER_data_hard)}")
+print(f"The Average Hard penality was {np.mean(BER_data_hard) - np.mean(BER_data_soft)}")
+
 # Ploting Chart
 plt.title("Turbo Code Performance (AWGN)")
 plt.xlabel("Eb/No")
