@@ -17,26 +17,58 @@ x2 = np.random.randn(n, 2) + np.matlib.repmat([4, 12], n, 1)
 x3 = np.random.randn(n, 2) + np.matlib.repmat([10, 8], n, 1)
 data = np.concatenate((x1, x2, x3), axis=0)
 n = data.shape[0]
+d = data.shape[1]
 
 # U Kmeans variables
 epilson = 0.1
 c = n
 a = data.copy()
+alpha = np.full(c, 1 / n)   #Proportion of each cluster
+gamma = 1
+beta = 1
 
 
-def get_centroids(data, K, a):
+def update_classes(data, K, a, gamma, alpha):
     classes = np.zeros(data.shape[0], dtype=int)
     euc = np.zeros((K, data.shape[0]))
     for i in range(K):
-
-        euc[i] = np.sum(np.square(data - a[i]), axis=1)
+        euc[i] = np.sum(np.square(data - a[i]), axis=1) - gamma * np.log(alpha[i])
     classes = np.argmin(euc, axis=0)
+    return classes
+
+def update_gamma(K):
+    return np.exp(-K/250)
+
+def update_alpha(alpha, classes, beta, gamma):
+    oldAlpha = alpha.copy()
+    entropy = np.dot(oldAlpha, np.log(oldAlpha))
+    for i in range(alpha.shape[0]):
+        alpha[i] = np.mean(classes[classes == i]) + (beta / gamma) * oldAlpha[i] * (np.log(oldAlpha[i]) - entropy)
+    return alpha, oldAlpha
+
+def update_beta(alpha, oldAlpha, classes, iter):
+    classes_count = np.zeros(K, dtype=int)
+    oldAlpha_info = np.sum(np.log(oldAlpha))
+    longN = np.min([1, (1 / iter ** ((d - 2) // 2))])
+    alphaDiff = np.mean(np.exp(longN * n * np.absolute(oldAlpha - alpha)))
 
     for i in range(K):
+        classes_count = len(classes[classes == i]) / len(classes)
+
+    return np.min(alphaDiff, (1 - np.max(classes_count)) / (- np.max(oldAlpha * oldAlpha_info)))
+
+def remove_clusters(alpha, classes):
+    newAlpha = alpha[alpha <= 1 / n]
+    c = newAlpha.shape[0]
+
+    newAlpha = newAlpha / np.sum(newAlpha)
+    
+    
+
+def update_clusters(data, K, a, classes):
+    for i in range(K):
         a[i] = np.mean(data[classes == i], axis=0)
-        # if len(data[classes == i]) > 0:
-        #     Centroids[i] = np.mean(data[classes == i], axis=0)
-    return a, classes
+    return a
 
 #############################################################################
 #                       Main Function
@@ -59,9 +91,13 @@ for K in range(K_iter, K_iter + 1):
 
     # Training loop for K-means clustering
     for epoch in range(epochs):
-        a, classes = get_centroids(data, K, a)
+        classes= update_classes(data, K, a, gamma, alpha)
+        gamma = update_gamma(K)
+        alpha, oldAlpha = update_alpha(alpha, classes, beta, gamma)
+        
+        a = update_clusters(data, K, a, classes)
         # classes = np.zeros(n * 3, dtype=int)
-        centroids_vector[epoch] = a
+        #centroids_vector[epoch] = a
         
     #############################################################################
     # Visualizing the dataset and the learned K-mean model
