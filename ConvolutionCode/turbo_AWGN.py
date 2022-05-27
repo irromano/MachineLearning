@@ -101,13 +101,13 @@ for iter in range(ITERATIONS):
         R_hard_1 = R_soft_1.copy()
         for t in range(1, BLOCK_LENGTH + MEMORY + 1):
             A_soft_1[t] = trel_soft_1.updateA(A_soft_1, coded_observation1[t-1], t, Eb_data[iter])
-            A_hard_1[t] = trel_hard_1.updateA(A_hard_1, coded_observation1[t-1], t, Eb_data[iter])
+            A_hard_1[t] = trel_hard_1.updateA(A_hard_1, coded_observation1[t-1], t, p)
         for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
             B_soft_1[t] = trel_soft_1.updateB(B_soft_1, coded_observation1[t], t, Eb_data[iter])
-            B_hard_1[t] = trel_hard_1.updateB(B_hard_1, coded_observation1[t], t, Eb_data[iter])
+            B_hard_1[t] = trel_hard_1.updateB(B_hard_1, coded_observation1[t], t, p)
         for t in range(BLOCK_LENGTH + MEMORY):
             R_soft_1[t] = trel_soft_1.updateR(A_soft_1[t], B_soft_1[t+1], coded_observation1[t], Eb_data[iter])
-            R_hard_1[t] = trel_hard_1.updateR(A_hard_1[t], B_hard_1[t+1], coded_observation1[t], Eb_data[iter])
+            R_hard_1[t] = trel_hard_1.updateR(A_hard_1[t], B_hard_1[t+1], coded_observation1[t], p)
 
         # BER
         R_soft = np.zeros(BLOCK_LENGTH + MEMORY)
@@ -136,13 +136,13 @@ for iter in range(ITERATIONS):
             R_hard_2 = R_soft_2.copy()
             for t in range(1, BLOCK_LENGTH + MEMORY + 1):
                 A_soft_2[t] = trel_soft_2.updateA(A_soft_2, coded_observation2[t-1], t, Eb_data[iter], R_soft_1pi[t-1])
-                A_hard_2[t] = trel_hard_2.updateA(A_hard_2, coded_observation2[t-1], t, Eb_data[iter], R_hard_1pi[t-1])
+                A_hard_2[t] = trel_hard_2.updateA(A_hard_2, coded_observation2[t-1], t, p, R_hard_1pi[t-1])
             for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
                 B_soft_2[t] = trel_soft_2.updateB(B_soft_2, coded_observation2[t], t, Eb_data[iter], R_soft_1pi[t])
-                B_hard_2[t] = trel_hard_2.updateB(B_hard_2, coded_observation2[t], t, Eb_data[iter], R_hard_1pi[t])
+                B_hard_2[t] = trel_hard_2.updateB(B_hard_2, coded_observation2[t], t, p, R_hard_1pi[t])
             for t in range(BLOCK_LENGTH):
                 R_soft_2[t] = trel_soft_2.updateR(A_soft_2[t], B_soft_2[t+1], coded_observation2[t], Eb_data[iter])
-                R_hard_2[t] = trel_hard_2.updateR(A_hard_2[t], B_hard_2[t+1], coded_observation2[t], Eb_data[iter])
+                R_hard_2[t] = trel_hard_2.updateR(A_hard_2[t], B_hard_2[t+1], coded_observation2[t], p)
 
             R_soft_2pi = np.zeros(BLOCK_LENGTH + MEMORY)
             R_hard_2pi = R_soft_2pi.copy()
@@ -161,13 +161,13 @@ for iter in range(ITERATIONS):
             R_hard_1 = R_soft_1.copy()
             for t in range(1, BLOCK_LENGTH + MEMORY + 1):
                 A_soft_1[t] = trel_soft_1.updateA(A_soft_1, coded_observation1[t-1], t, Eb_data[iter], R_soft_2pi[t-1])
-                A_hard_1[t] = trel_hard_1.updateA(A_hard_1, coded_observation1[t-1], t, Eb_data[iter], R_hard_2pi[t-1])
+                A_hard_1[t] = trel_hard_1.updateA(A_hard_1, coded_observation1[t-1], t, p, R_hard_2pi[t-1])
             for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
                 B_soft_1[t] = trel_soft_1.updateB(B_soft_1, coded_observation1[t], t, Eb_data[iter], R_soft_2pi[t])
-                B_hard_1[t] = trel_hard_1.updateB(B_hard_1, coded_observation1[t], t, Eb_data[iter], R_hard_2pi[t])
+                B_hard_1[t] = trel_hard_1.updateB(B_hard_1, coded_observation1[t], t, p, R_hard_2pi[t])
             for t in range(BLOCK_LENGTH):
                 R_soft_1[t] = trel_soft_1.updateR(A_soft_1[t], B_soft_1[t+1], coded_observation1[t], Eb_data[iter])
-                R_hard_1[t] = trel_hard_1.updateR(A_hard_1[t], B_hard_1[t+1], coded_observation1[t], Eb_data[iter])
+                R_hard_1[t] = trel_hard_1.updateR(A_hard_1[t], B_hard_1[t+1], coded_observation1[t], p)
 
             R_soft = np.zeros(BLOCK_LENGTH + MEMORY)
             R_hard = R_soft.copy()

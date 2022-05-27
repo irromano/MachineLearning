@@ -94,13 +94,13 @@ for iter in range(ITERATIONS):
 
         for t in range(1, BLOCK_LENGTH + MEMORY + 1):
             A_soft[t] = trel_soft.updateA(A_soft, coded_observation[t-1], t, Eb_data[iter])
-            A_hard[t] = trel_hard.updateA(A_hard, coded_observation[t-1], t, Eb_data[iter])
+            A_hard[t] = trel_hard.updateA(A_hard, coded_observation[t-1], t, p)
         for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
             B_soft[t] = trel_soft.updateB(B_soft, coded_observation[t], t, Eb_data[iter])
-            B_hard[t] = trel_hard.updateB(B_hard, coded_observation[t], t, Eb_data[iter])
+            B_hard[t] = trel_hard.updateB(B_hard, coded_observation[t], t, p)
         for t in range(BLOCK_LENGTH + MEMORY):
             R_soft[t] = trel_soft.updateR(A_soft[t], B_soft[t+1], coded_observation[t], Eb_data[iter])
-            R_hard[t] = trel_hard.updateR(A_hard[t], B_hard[t+1], coded_observation[t], Eb_data[iter])
+            R_hard[t] = trel_hard.updateR(A_hard[t], B_hard[t+1], coded_observation[t], p)
 
         # BER
         R_soft[R_soft < 0] = 0

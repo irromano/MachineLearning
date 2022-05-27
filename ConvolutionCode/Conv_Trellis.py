@@ -30,8 +30,9 @@ class State:
 
 
 class Trellis:
-    def __init__(self, encoding: EncodingType, Eb=1.0):
+    def __init__(self, encoding: EncodingType, Eb=1.0, hard=False, ):
         self.encoding = encoding
+        self.hard = hard
         self.states = []
         self.memory = 3
         self.availableNodes = np.zeros(2 ** self.memory, dtype=int)
@@ -51,7 +52,7 @@ class Trellis:
                     state.backbranch1_output = otherState.branch1_output
 
     # Helper function of updateBranchCost()
-    def nextAvailableNodes(self, time) -> list[int]:
+    def nextAvailableNodes(self) -> list[int]:
         newAvailable = self.availableNodes.copy()
         self.availableNodes_ClosingSet.append(self.availableNodes)
         for i in range(len(newAvailable)):
@@ -63,9 +64,9 @@ class Trellis:
     def finalAvailableNodes(self, time, blockLength) -> list[int]:
         return self.availableNodes_ClosingSet[blockLength - time - 1]  # This is blocklength minus current time minus 1
 
-    def distance(self, A: list[int], B: list[int], encoding: EncodingType, hard):
+    def distance(self, A: list[int], B: list[int]):
 
-        if encoding == EncodingType.BSC:
+        if self.encoding == EncodingType.BSC:
             # Calculate Hamming Distance
             d = 0
             if A[0] != B[0]:
@@ -77,40 +78,40 @@ class Trellis:
             # Return Euclidean Distance
             a = A.copy()
             b = B.copy()
-            if hard:  # Force values into -1.0 or 1.0
+            if self.hard:  # Force values into -1.0 or 1.0
                 for i in range(len(a)):
                     a[i] = (-1)*abs(b[i]) if a[i] < 0 else abs(b[i])
             return np.linalg.norm(a - b)
 
-    def LLR(self, r, p, hard):
-        if self.encoding == EncodingType.BSC:
-            return np.log((1-p) / p) if r == 1 else np.log((p / (1-p)))
-        elif hard:
-            return 2 * p if r > 0 else (-2) * p
+    def LLR(self, r, p):
+        if self.encoding == EncodingType.BSC or self.hard:
+            return np.log((1-p) / p) if r > 0 else np.log((p / (1-p)))
+        # elif self.hard:
+        #     return 2 * p if r > 0 else (-2) * p
         else:
             return 2 * r
 
-    def updateA(self, A, r, t, p, hard=True):
+    def updateA(self, A, r, t, p, llr_pi=0):
         for i in range(A.shape[1]):
             c0_0 = int(self.states[self.states[i].backbranch0].branch0_output[0] > 0)
             c1_0 = int(self.states[self.states[i].backbranch0].branch0_output[1] > 0)
             c0_1 = int(self.states[self.states[i].backbranch1].branch1_output[0] > 0)
             c1_1 = int(self.states[self.states[i].backbranch1].branch1_output[1] > 0)
-            A[t, i] = max(A[t-1, self.states[i].backbranch0] + c0_0 * self.LLR(r[0], p, hard) + c1_0 * self.LLR(r[1], p, hard),
-                          A[t-1, self.states[i].backbranch1] + c0_1 * self.LLR(r[0], p, hard) + c1_1 * self.LLR(r[1], p, hard))
+            A[t, i] = max(A[t-1, self.states[i].backbranch0] + c0_0 * self.LLR(r[0], p) + c1_0 * self.LLR(r[1], p),
+                          A[t-1, self.states[i].backbranch1] + c0_1 * self.LLR(r[0], p) + c1_1 * self.LLR(r[1], p) + llr_pi)
         return A[t]
 
-    def updateB(self, B, r, t, p, hard=True):
+    def updateB(self, B, r, t, p, llr_pi=0):
         for i in range(B.shape[1]):
             c0_0 = int(self.states[i].branch0_output[0] > 0)
             c1_0 = int(self.states[i].branch0_output[1] > 0)
             c0_1 = int(self.states[i].branch1_output[0] > 0)
             c1_1 = int(self.states[i].branch1_output[1] > 0)
-            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + c0_0 * self.LLR(r[0], p, hard) + c1_0 * self.LLR(r[1], p, hard),
-                          B[t+1, self.states[i].branch1_digit] + c0_1 * self.LLR(r[0], p, hard) + c1_1 * self.LLR(r[1], p, hard))
+            B[t, i] = max(B[t+1, self.states[i].branch0_digit] + c0_0 * self.LLR(r[0], p) + c1_0 * self.LLR(r[1], p),
+                          B[t+1, self.states[i].branch1_digit] + c0_1 * self.LLR(r[0], p) + c1_1 * self.LLR(r[1], p) + llr_pi)
         return B[t]
 
-    def updateR(self, A, B, r, p, hard=True):
+    def updateR(self, A, B, r, p):
         r0 = np.zeros(len(self.states))
         r1 = np.zeros(len(self.states))
 
@@ -120,23 +121,21 @@ class Trellis:
             c0_1 = int(self.states[self.states[i].backbranch1].branch1_output[0] > 0)
             c1_1 = int(self.states[self.states[i].backbranch1].branch1_output[1] > 0)
             r0[i] = A[self.states[i].backbranch0] + c0_0 * \
-                self.LLR(r[0], p, hard) + c1_0 * self.LLR(r[1], p, hard) + B[i]
+                self.LLR(r[0], p) + c1_0 * self.LLR(r[1], p) + B[i]
             r1[i] = A[self.states[i].backbranch1] + c0_1 * \
-                self.LLR(r[0], p, hard) + c1_1 * self.LLR(r[1], p, hard) + B[i]
+                self.LLR(r[0], p) + c1_1 * self.LLR(r[1], p) + B[i]
         return max(r1) - max(r0)
 
-    def updateBranchCost(self, cost: list[int], input: list[int], time: int, hard=False):
+    def updateBranchCost(self, cost: list[int], input: list[int], time: int):
         if time <= self.memory:
-            nextAvailableNodes = self.nextAvailableNodes(time)
+            nextAvailableNodes = self.nextAvailableNodes()
         else:
             nextAvailableNodes = self.availableNodes
         newcost = cost.copy()
         for i in range(len(self.states)):
             if nextAvailableNodes[i]:
-                distance0 = self.distance(
-                    input, self.states[i].backbranch0_output, self.encoding, hard) + cost[self.states[i].backbranch0]
-                distance1 = self.distance(
-                    input, self.states[i].backbranch1_output, self.encoding, hard) + cost[self.states[i].backbranch1]
+                distance0 = self.distance(input, self.states[i].backbranch0_output) + cost[self.states[i].backbranch0]
+                distance1 = self.distance(input, self.states[i].backbranch1_output) + cost[self.states[i].backbranch1]
 
                 if not self.availableNodes[self.states[i].backbranch1]:
                     newcost[i] = distance0
