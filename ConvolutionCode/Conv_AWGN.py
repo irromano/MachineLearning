@@ -9,7 +9,7 @@ BLOCK_LENGTH = 16000
 MEMORY = 3
 STATE_COUNT = (2 ** MEMORY)
 ITERATIONS = 10
-TRIALS = 10
+TRIALS = 1
 
 
 # Plot Data
@@ -56,11 +56,12 @@ for iter in range(ITERATIONS):
         coded_observation = coded.copy()
 
         # introducing noise
-        noise = np.reshape(np.random.normal(0, 1.0, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
+        sigmoid = np.sqrt(1 / Eb_data[iter])
+        noise = np.reshape(np.random.normal(0, sigmoid, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
         coded_observation += noise
 
         trel_soft = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter])
-        trel_hard = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter])
+        trel_hard = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter], True)
 
         # Calculating cost branches for Viterbi Algorithm
         costMatrix_soft = np.zeros((BLOCK_LENGTH + MEMORY, STATE_COUNT), dtype=np.double)
@@ -69,7 +70,7 @@ for iter in range(ITERATIONS):
         cost_hard = np.zeros(STATE_COUNT, dtype=np.double)
         for i in range(1, BLOCK_LENGTH + MEMORY):
             costMatrix_soft[i] = trel_soft.updateBranchCost(costMatrix_soft[i-1], coded_observation[i-1], i)
-            costMatrix_hard[i] = trel_hard.updateBranchCost(costMatrix_hard[i-1], coded_observation[i-1], i, True)
+            costMatrix_hard[i] = trel_hard.updateBranchCost(costMatrix_hard[i-1], coded_observation[i-1], i)
 
         for i in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
             uncoded_guess_soft[i] = trel_soft.viterbi_Decoder(coded_observation[i], costMatrix_soft[i], i)
@@ -88,13 +89,13 @@ for iter in range(ITERATIONS):
         R_hard = R_soft.copy()
 
         for t in range(1, BLOCK_LENGTH + MEMORY + 1):
-            A_soft[t] = trel_soft.updateA(A_soft, coded_observation[t-1], t, Eb_data[iter], False)
+            A_soft[t] = trel_soft.updateA(A_soft, coded_observation[t-1], t, Eb_data[iter])
             A_hard[t] = trel_hard.updateA(A_hard, coded_observation[t-1], t, Eb_data[iter])
         for t in range(BLOCK_LENGTH + MEMORY - 1, -1, -1):
-            B_soft[t] = trel_soft.updateB(B_soft, coded_observation[t], t, Eb_data[iter], False)
+            B_soft[t] = trel_soft.updateB(B_soft, coded_observation[t], t, Eb_data[iter])
             B_hard[t] = trel_hard.updateB(B_hard, coded_observation[t], t, Eb_data[iter])
         for t in range(BLOCK_LENGTH + MEMORY):
-            R_soft[t] = trel_soft.updateR(A_soft[t], B_soft[t+1], coded_observation[t], Eb_data[iter], False)
+            R_soft[t] = trel_soft.updateR(A_soft[t], B_soft[t+1], coded_observation[t], Eb_data[iter])
             R_hard[t] = trel_hard.updateR(A_hard[t], B_hard[t+1], coded_observation[t], Eb_data[iter])
 
         # BER
