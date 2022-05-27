@@ -11,7 +11,7 @@ CONVOS = 2
 MEMORY = 3
 STATE_COUNT = (2 ** MEMORY)
 ITERATIONS = 7
-BLOCKS = 20
+BLOCKS = 4
 CYCLES = 1
 
 Eb_data = np.linspace(0.9, 2.1, ITERATIONS)
@@ -74,10 +74,14 @@ for iter in range(ITERATIONS):
 
         # introducing noise
         coded_observation1 = coded1.copy()
-        error1 = np.reshape(np.random.normal(0, 1.0, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
-        error2 = np.reshape(np.random.normal(0, 1.0, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
+        sigmoid = np.sqrt(1 / Eb_data[iter])
+        error1 = np.reshape(np.random.normal(0, sigmoid, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
+        error2 = np.reshape(np.random.normal(0, sigmoid, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
         coded_observation1 += error1
         coded_observation2 += error2
+
+        # P of flip for hard desicion
+        p = 1 - stats.norm.cdf(Eb_data[iter], scale=sigmoid)
 
         trel_soft_1 = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter])
         trel_soft_2 = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter])
@@ -195,7 +199,7 @@ plt.ylabel("BER")
 plt.yscale("log")
 # plt.plot(Eb_data, BER_data0_soft, color="blue")
 # plt.plot(Eb_data, BER_data0_hard, color="red")
-plt.plot(Eb_data, BER_data_soft, color="purple")
+plt.plot(Eb_data, BER_data_soft, color="green")
 plt.legend(["Turbo"])
 plt.ylim(10 ** (-6), 10 ** (-1))
 plt.show()
@@ -207,8 +211,8 @@ plt.ylabel("BER")
 plt.yscale("log")
 # plt.plot(Eb_data, BER_data0_soft, color="blue")
 # plt.plot(Eb_data, BER_data0_hard, color="red")
-plt.plot(Eb_data, BER_data_soft, color="purple")
-plt.plot(Eb_data, BER_data_hard, color="green")
+plt.plot(Eb_data, BER_data_soft, color="green")
+plt.plot(Eb_data, BER_data_hard, color="purple")
 plt.legend(["Turbo Soft", "Turbo Hard"])
 plt.ylim(10 ** (-6), 10 ** (-1))
 plt.show()

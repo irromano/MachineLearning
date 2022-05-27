@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.random import default_rng
+import scipy.stats as stats
 
 import Conv_Trellis as Conv
 
@@ -13,7 +14,7 @@ TRIALS = 1
 
 
 # Plot Data
-Eb_data = np.linspace(1.0, 2.8, ITERATIONS)
+Eb_data = np.linspace(0.9, 2.1, ITERATIONS) #np.linspace(1.0, 2.8, ITERATIONS)
 Viterbi_BER_data_soft = np.zeros(ITERATIONS, dtype=np.double)
 Viterbi_BER_data_hard = np.zeros(ITERATIONS, dtype=np.double)
 FwBw_BER_data_soft = np.zeros(ITERATIONS, dtype=np.double)
@@ -59,6 +60,9 @@ for iter in range(ITERATIONS):
         sigmoid = np.sqrt(1 / Eb_data[iter])
         noise = np.reshape(np.random.normal(0, sigmoid, size=(BLOCK_LENGTH + MEMORY) * 2), (BLOCK_LENGTH + MEMORY, 2))
         coded_observation += noise
+
+        # P of flip for hard desicion
+        p = 1 - stats.norm.cdf(Eb_data[iter], scale=sigmoid)
 
         trel_soft = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter])
         trel_hard = Conv.Trellis(Conv.EncodingType.AWGN, Eb_data[iter], True)
